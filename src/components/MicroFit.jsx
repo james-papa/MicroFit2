@@ -183,17 +183,17 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
 // Audio notification component - 5 Modern Smartphone style variations
 const SOUND_OPTIONS = [
   {
-    label: 'Default (Synthesized)',
+    label: 'Bells',
     value: 'synth',
     src: null // handled by Web Audio API
   },
   {
-    label: 'Alarm Clock (freesound_community)',
+    label: 'Alarm Clock',
     value: 'alarm',
     src: '/sounds/alarm.mp3'
   },
   {
-    label: 'Sports Whistle (kalsstockmedia)',
+    label: 'Sports Whistle',
     value: 'whistle',
     src: '/sounds/whistle.mp3'
   }
