@@ -181,144 +181,172 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
 };
 
 // Audio notification component - 5 Modern Smartphone style variations
-const AudioAlert = ({ play }) => {
+const SOUND_OPTIONS = [
+  {
+    label: 'Default (Synthesized)',
+    value: 'synth',
+    src: null // handled by Web Audio API
+  },
+  {
+    label: 'Alarm Clock (freesound_community)',
+    value: 'alarm',
+    src: '/sounds/alarm.mp3'
+  },
+  {
+    label: 'Sports Whistle (kalsstockmedia)',
+    value: 'whistle',
+    src: '/sounds/whistle.mp3'
+  }
+];
+
+const AudioAlert = ({ play, sound }) => {
   useEffect(() => {
     if (play) {
-      try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const masterGain = audioContext.createGain();
-        masterGain.gain.value = 0.5;
-        masterGain.connect(audioContext.destination);
-        
-        const now = audioContext.currentTime;
-        let currentTime = now;
-        
-        // Helper function to create a basic tone with harmonic
-        const createTone = (startTime, freq, duration, type, harmonicRatio, mainGain, harmonicGain) => {
-          // Main oscillator
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
+      if (sound === 'synth') {
+        try {
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const masterGain = audioContext.createGain();
+          masterGain.gain.value = 0.5;
+          masterGain.connect(audioContext.destination);
           
-          osc.type = type;
-          osc.frequency.value = freq;
+          const now = audioContext.currentTime;
+          let currentTime = now;
           
-          gain.gain.setValueAtTime(0, startTime);
-          gain.gain.linearRampToValueAtTime(mainGain, startTime + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-          
-          osc.connect(gain);
-          gain.connect(masterGain);
-          
-          osc.start(startTime);
-          osc.stop(startTime + duration);
-          
-          // Harmonic oscillator
-          const harmonic = audioContext.createOscillator();
-          const hGain = audioContext.createGain();
-          
-          harmonic.type = type;
-          harmonic.frequency.value = freq * harmonicRatio;
-          
-          hGain.gain.setValueAtTime(0, startTime);
-          hGain.gain.linearRampToValueAtTime(harmonicGain, startTime + 0.02);
-          hGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.8);
-          
-          harmonic.connect(hGain);
-          hGain.connect(masterGain);
-          
-          harmonic.start(startTime);
-          harmonic.stop(startTime + duration * 0.8);
-        };
-        
-        // ===== VARIATION 1: Classic Marimba Style =====
-        // Ascending C major arpeggio
-        const notes1 = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-        for (let i = 0; i < notes1.length; i++) {
-          createTone(currentTime + i * 0.25, notes1[i], 0.7, 'sine', 3.0, 0.8, 0.15);
-        }
-        currentTime += 2.0; // Pause between variations
-        
-        // ===== VARIATION 2: Descending Xylophone Style =====
-        // Descending pattern
-        const notes2 = [880, 783.99, 659.25, 523.25]; // A5, G5, E5, C5
-        for (let i = 0; i < notes2.length; i++) {
-          createTone(currentTime + i * 0.22, notes2[i], 0.5, 'sine', 2.0, 0.7, 0.2);
-        }
-        currentTime += 2.0; // Pause between variations
-        
-        // ===== VARIATION 3: Bell-like Tones =====
-        // Major triad with more bell-like qualities
-        const notes3 = [440, 550, 660, 880]; // A4, C#5, E5, A5
-        for (let i = 0; i < notes3.length; i++) {
-          // Use different harmonics for bell-like quality
-          createTone(currentTime + i * 0.3, notes3[i], 0.8, 'sine', 2.76, 0.6, 0.25);
-          // Add a secondary harmonic
-          setTimeout(() => {
+          // Helper function to create a basic tone with harmonic
+          const createTone = (startTime, freq, duration, type, harmonicRatio, mainGain, harmonicGain) => {
+            // Main oscillator
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
             
-            osc.type = 'sine';
-            osc.frequency.value = notes3[i] * 1.5;
+            osc.type = type;
+            osc.frequency.value = freq;
             
-            gain.gain.setValueAtTime(0, 0);
-            gain.gain.linearRampToValueAtTime(0.2, 0.03);
-            gain.gain.exponentialRampToValueAtTime(0.001, 0.6);
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(mainGain, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
             
             osc.connect(gain);
             gain.connect(masterGain);
             
-            osc.start();
-            osc.stop(0.6);
-          }, (currentTime + i * 0.3 + 0.05) * 1000);
-        }
-        currentTime += 2.0; // Pause between variations
-        
-        // ===== VARIATION 4: Gentle Chime Pattern =====
-        // Pentatonic scale (D, E, G, A, C)
-        const notes4 = [587.33, 659.25, 783.99, 880, 1046.50];
-        for (let i = 0; i < 4; i++) {
-          // Play pairs of notes for a pleasing harmony
-          createTone(currentTime + i * 0.4, notes4[i % notes4.length], 0.9, 'sine', 2.0, 0.6, 0.1);
-          createTone(currentTime + i * 0.4 + 0.15, notes4[(i + 2) % notes4.length], 0.7, 'sine', 1.5, 0.5, 0.1);
-        }
-        currentTime += 2.0; // Pause between variations
-        
-        // ===== VARIATION 5: Minimalist Modern Style =====
-        // Simple rising three-note pattern with clean tones
-        const notes5 = [392, 523.25, 783.99]; // G4, C5, G5
-        for (let i = 0; i < notes5.length; i++) {
-          createTone(currentTime + i * 0.35, notes5[i], 0.6, 'sine', 1.5, 0.7, 0.12);
-        }
-        
-        // Add a final chord for resolution
-        setTimeout(() => {
-          const baseFreq = 523.25; // C5
-          const chord = [1, 1.25, 1.5]; // C, E, G
+            osc.start(startTime);
+            osc.stop(startTime + duration);
+            
+            // Harmonic oscillator
+            const harmonic = audioContext.createOscillator();
+            const hGain = audioContext.createGain();
+            
+            harmonic.type = type;
+            harmonic.frequency.value = freq * harmonicRatio;
+            
+            hGain.gain.setValueAtTime(0, startTime);
+            hGain.gain.linearRampToValueAtTime(harmonicGain, startTime + 0.02);
+            hGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.8);
+            
+            harmonic.connect(hGain);
+            hGain.connect(masterGain);
+            
+            harmonic.start(startTime);
+            harmonic.stop(startTime + duration * 0.8);
+          };
           
-          for (let i = 0; i < chord.length; i++) {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            
-            osc.type = 'sine';
-            osc.frequency.value = baseFreq * chord[i];
-            
-            gain.gain.setValueAtTime(0, 0);
-            gain.gain.linearRampToValueAtTime(0.3, 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.001, 1.0);
-            
-            osc.connect(gain);
-            gain.connect(masterGain);
-            
-            osc.start();
-            osc.stop(1.0);
+          // ===== VARIATION 1: Classic Marimba Style =====
+          // Ascending C major arpeggio
+          const notes1 = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+          for (let i = 0; i < notes1.length; i++) {
+            createTone(currentTime + i * 0.25, notes1[i], 0.7, 'sine', 3.0, 0.8, 0.15);
           }
-        }, (currentTime + notes5.length * 0.35 + 0.1) * 1000);
-        
-      } catch (err) {
-        console.error("Error playing notification sound:", err);
+          currentTime += 2.0; // Pause between variations
+          
+          // ===== VARIATION 2: Descending Xylophone Style =====
+          // Descending pattern
+          const notes2 = [880, 783.99, 659.25, 523.25]; // A5, G5, E5, C5
+          for (let i = 0; i < notes2.length; i++) {
+            createTone(currentTime + i * 0.22, notes2[i], 0.5, 'sine', 2.0, 0.7, 0.2);
+          }
+          currentTime += 2.0; // Pause between variations
+          
+          // ===== VARIATION 3: Bell-like Tones =====
+          // Major triad with more bell-like qualities
+          const notes3 = [440, 550, 660, 880]; // A4, C#5, E5, A5
+          for (let i = 0; i < notes3.length; i++) {
+            // Use different harmonics for bell-like quality
+            createTone(currentTime + i * 0.3, notes3[i], 0.8, 'sine', 2.76, 0.6, 0.25);
+            // Add a secondary harmonic
+            setTimeout(() => {
+              const osc = audioContext.createOscillator();
+              const gain = audioContext.createGain();
+              
+              osc.type = 'sine';
+              osc.frequency.value = notes3[i] * 1.5;
+              
+              gain.gain.setValueAtTime(0, 0);
+              gain.gain.linearRampToValueAtTime(0.2, 0.03);
+              gain.gain.exponentialRampToValueAtTime(0.001, 0.6);
+              
+              osc.connect(gain);
+              gain.connect(masterGain);
+              
+              osc.start();
+              osc.stop(0.6);
+            }, (currentTime + i * 0.3 + 0.05) * 1000);
+          }
+          currentTime += 2.0; // Pause between variations
+          
+          // ===== VARIATION 4: Gentle Chime Pattern =====
+          // Pentatonic scale (D, E, G, A, C)
+          const notes4 = [587.33, 659.25, 783.99, 880, 1046.50];
+          for (let i = 0; i < 4; i++) {
+            // Play pairs of notes for a pleasing harmony
+            createTone(currentTime + i * 0.4, notes4[i % notes4.length], 0.9, 'sine', 2.0, 0.6, 0.1);
+            createTone(currentTime + i * 0.4 + 0.15, notes4[(i + 2) % notes4.length], 0.7, 'sine', 1.5, 0.5, 0.1);
+          }
+          currentTime += 2.0; // Pause between variations
+          
+          // ===== VARIATION 5: Minimalist Modern Style =====
+          // Simple rising three-note pattern with clean tones
+          const notes5 = [392, 523.25, 783.99]; // G4, C5, G5
+          for (let i = 0; i < notes5.length; i++) {
+            createTone(currentTime + i * 0.35, notes5[i], 0.6, 'sine', 1.5, 0.7, 0.12);
+          }
+          
+          // Add a final chord for resolution
+          setTimeout(() => {
+            const baseFreq = 523.25; // C5
+            const chord = [1, 1.25, 1.5]; // C, E, G
+            
+            for (let i = 0; i < chord.length; i++) {
+              const osc = audioContext.createOscillator();
+              const gain = audioContext.createGain();
+              
+              osc.type = 'sine';
+              osc.frequency.value = baseFreq * chord[i];
+              
+              gain.gain.setValueAtTime(0, 0);
+              gain.gain.linearRampToValueAtTime(0.3, 0.05);
+              gain.gain.exponentialRampToValueAtTime(0.001, 1.0);
+              
+              osc.connect(gain);
+              gain.connect(masterGain);
+              
+              osc.start();
+              osc.stop(1.0);
+            }
+          }, (currentTime + notes5.length * 0.35 + 0.1) * 1000);
+          
+        } catch (err) {
+          console.error("Error playing notification sound:", err);
+        }
+      } else {
+        // Play audio file
+        const option = SOUND_OPTIONS.find(opt => opt.value === sound);
+        if (option && option.src) {
+          const audio = new window.Audio(option.src);
+          audio.volume = 0.7;
+          audio.play();
+        }
       }
     }
-  }, [play]);
+  }, [play, sound]);
 
   return null;
 };
@@ -365,6 +393,9 @@ export default function MicroFit() {
   
   // Add a state to track which back exercise to show
   const [backExerciseIndex, setBackExerciseIndex] = useState(0);
+
+  // Add state for selected sound
+  const [selectedSound, setSelectedSound] = useState('synth');
   
   // Load project history and stats from localStorage on component mount
   useEffect(() => {
@@ -636,7 +667,7 @@ export default function MicroFit() {
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${!onBreak ? 'bg-slate-800' : 'bg-slate-50'}`}>
       {/* Audio notification */}
-      <AudioAlert play={shouldPlaySound} />
+      <AudioAlert play={shouldPlaySound} sound={selectedSound} />
       
       <div className={`w-full max-w-md mx-auto rounded-2xl shadow-xl p-6 relative transition-colors duration-300 ${!onBreak ? 'bg-slate-800' : 'bg-white'}`}>
         {/* Tabs */}
@@ -904,6 +935,22 @@ export default function MicroFit() {
                       </select>
                     </div>
                   )}
+
+                  {/* Alarm Sound */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${!onBreak ? 'text-white' : 'text-slate-700'}`}>
+                      Alarm Sound
+                    </label>
+                    <select
+                      value={selectedSound}
+                      onChange={e => setSelectedSound(e.target.value)}
+                      className={`w-full p-2 rounded-md focus:outline-none ${!onBreak ? 'bg-slate-600 text-white border-gray-600' : 'bg-white text-black border-gray-300'}`}
+                    >
+                      {SOUND_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
