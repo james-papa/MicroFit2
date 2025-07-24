@@ -351,6 +351,35 @@ const AudioAlert = ({ play, sound }) => {
   return null;
 };
 
+// Toast Notification Component
+function Toast({ message, visible }) {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left: '50%',
+        bottom: visible ? 32 : -100,
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+        minWidth: 260,
+        background: 'rgba(30,41,59,0.98)',
+        color: 'white',
+        padding: '16px 32px',
+        borderRadius: 12,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        fontSize: 18,
+        fontWeight: 500,
+        opacity: visible ? 1 : 0,
+        transition: 'bottom 0.5s cubic-bezier(.4,2,.6,1), opacity 0.5s',
+        pointerEvents: 'none',
+      }}
+      aria-live="polite"
+    >
+      {message}
+    </div>
+  );
+}
+
 // Main App Component
 export default function MicroFit() {
   // Core settings
@@ -396,6 +425,25 @@ export default function MicroFit() {
 
   // Add state for selected sound
   const [selectedSound, setSelectedSound] = useState('synth');
+  
+  // Add state for toast notifications
+  const [toast, setToast] = useState({ message: '', visible: false });
+  const toastTimeoutRef = useRef(null);
+  
+  // Add state for notification permission
+  const [notificationPermission, setNotificationPermission] = useState('default');
+  
+  // Request notification permission on app start
+  useEffect(() => {
+    if (window.Notification) {
+      setNotificationPermission(Notification.permission);
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          setNotificationPermission(permission);
+        });
+      }
+    }
+  }, []);
   
   // Load project history and stats from localStorage on component mount
   useEffect(() => {
@@ -488,18 +536,38 @@ export default function MicroFit() {
         // Play notification sound when timer ends (for both focus and break)
         if (!onBreak) {
           setShouldPlaySound(true);
-          // Reset sound trigger after a short delay
           setTimeout(() => setShouldPlaySound(false), 1000);
         } else {
-          // Also play sound at the end of a break
           setShouldPlaySound(true);
-          // Reset sound trigger after a short delay
           setTimeout(() => setShouldPlaySound(false), 1000);
         }
         
         if (autoSwitch) {
           // Switch modes
           const nextIsBreak = !onBreak;
+          // === NOTIFICATION LOGIC ===
+          let toastMsg = '';
+          if (nextIsBreak) {
+            toastMsg = `Break start ${breakDuration} seconds remaining`;
+          } else {
+            toastMsg = `Focus start ${workDuration} minutes remaining`;
+          }
+          // Show in-app toast
+          setToast({ message: toastMsg, visible: true });
+          if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+          toastTimeoutRef.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 3500);
+          // Show browser notification with proper options
+          if (window.Notification && Notification.permission === 'granted') {
+            new Notification('MicroFit', { 
+              body: toastMsg,
+              icon: '/favicon.ico', // Add an icon if you have one
+              badge: '/favicon.ico',
+              tag: 'microfit-timer', // Prevents duplicate notifications
+              requireInteraction: false,
+              silent: false
+            });
+          }
+          // === END NOTIFICATION LOGIC ===
           setOnBreak(nextIsBreak);
           
           // Update sessions
@@ -668,6 +736,8 @@ export default function MicroFit() {
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${!onBreak ? 'bg-slate-800' : 'bg-slate-50'}`}>
       {/* Audio notification */}
       <AudioAlert play={shouldPlaySound} sound={selectedSound} />
+      {/* Toast Notification */}
+      <Toast message={toast.message} visible={toast.visible} />
       
       <div className={`w-full max-w-md mx-auto rounded-2xl shadow-xl p-6 relative transition-colors duration-300 ${!onBreak ? 'bg-slate-800' : 'bg-white'}`}>
         {/* Tabs */}
@@ -787,7 +857,7 @@ export default function MicroFit() {
               <div 
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                   isSettingsOpen 
-                    ? 'max-h-96 opacity-100' 
+                    ? (goal === 'strength' || goal === 'stretch' ? 'max-h-[28rem] opacity-100' : 'max-h-96 opacity-100')
                     : 'max-h-0 opacity-0'
                 }`}
               >
@@ -936,21 +1006,31 @@ export default function MicroFit() {
                     </div>
                   )}
 
-                  {/* Alarm Sound */}
-                  <div>
+                  {/* Alarm Sound - Always show this option */}
+                  <div className="alarm-sound-section" style={{ display: 'block !important', visibility: 'visible !important' }}>
                     <label className={`block text-sm font-medium mb-2 ${!onBreak ? 'text-white' : 'text-slate-700'}`}>
                       Alarm Sound
                     </label>
                     <select
                       value={selectedSound}
                       onChange={e => setSelectedSound(e.target.value)}
-                      className={`w-full p-2 rounded-md focus:outline-none ${!onBreak ? 'bg-slate-600 text-white border-gray-600' : 'bg-white text-black border-gray-300'}`}
+                      className={`w-full p-2 rounded-md focus:outline-none border ${!onBreak ? 'bg-slate-600 text-white border-gray-600' : 'bg-white text-black border-gray-300'}`}
+                      style={{ 
+                        minHeight: '40px',
+                        display: 'block !important',
+                        visibility: 'visible !important',
+                        opacity: '1 !important',
+                        position: 'relative',
+                        zIndex: 10
+                      }}
                     >
                       {SOUND_OPTIONS.map(opt => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
                   </div>
+
+
                 </div>
               </div>
             </div>

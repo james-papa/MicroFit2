@@ -56,4 +56,17 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+  
+  /* Ensure alarm sound dropdown is always visible */
+  .alarm-sound-section {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .alarm-sound-section select {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
 }
