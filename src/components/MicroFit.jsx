@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dumbbell, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Exercise Animation Component
-const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions }) => {
+const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, exerciseIndex }) => {
   // Exercise data
   const exerciseData = {
     strength: {
@@ -14,7 +14,10 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
       abs: [
         { name: "Crunch", description: "Lift shoulders from floor, engage abs, don't pull on neck" },
         { name: "Plank", description: "Maintain straight line from head to heels, engage core" },
-        { name: "Mountain Climber", description: "Alternate bringing knees to chest while in plank position" }
+        { name: "Mountain Climber", description: "Alternate bringing knees to chest while in plank position" },
+        { name: "Bicycle Crunch", description: "Lie on back, alternate bringing opposite elbow to opposite knee in cycling motion" },
+        { name: "Leg Raises", description: "Lie on back, lift straight legs up to 90 degrees, lower slowly without touching ground" },
+        { name: "Side Plank", description: "Balance on one forearm and side of foot, keep body in straight line, engage obliques" }
       ],
       back: [
         {
@@ -92,9 +95,25 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
   // Get current exercise list
   const getCurrentExercises = () => {
     if (goal === 'strength') {
-      return exerciseData.strength[strengthFocus] || [];
+      if (strengthFocus === 'randomized') {
+        // For randomized strength, cycle through all categories
+        const categories = Object.keys(exerciseData.strength);
+        const categoryIndex = Math.floor(exerciseIndex / 3) % categories.length; // Change category every 3 exercises
+        const currentCat = categories[categoryIndex];
+        return exerciseData.strength[currentCat] || [];
+      } else {
+        return exerciseData.strength[strengthFocus] || [];
+      }
     } else if (goal === 'stretch') {
-      return exerciseData.stretch[stretchFocus] || [];
+      if (stretchFocus === 'randomized') {
+        // For randomized stretch, cycle through all categories
+        const categories = Object.keys(exerciseData.stretch);
+        const categoryIndex = Math.floor(exerciseIndex / 3) % categories.length; // Change category every 3 exercises
+        const currentCat = categories[categoryIndex];
+        return exerciseData.stretch[currentCat] || [];
+      } else {
+        return exerciseData.stretch[stretchFocus] || [];
+      }
     } else {
       return exerciseData.posture.default || [];
     }
@@ -102,10 +121,37 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
 
   const exercises = getCurrentExercises();
   
-  // Get current exercise based on completed sessions
+  // Calculate current category for display
+  const getCurrentCategory = () => {
+    if (goal === 'strength') {
+      if (strengthFocus === 'randomized') {
+        const categories = Object.keys(exerciseData.strength);
+        const categoryIndex = Math.floor(exerciseIndex / 3) % categories.length;
+        return categories[categoryIndex];
+      } else {
+        return strengthFocus;
+      }
+    } else if (goal === 'stretch') {
+      if (stretchFocus === 'randomized') {
+        const categories = Object.keys(exerciseData.stretch);
+        const categoryIndex = Math.floor(exerciseIndex / 3) % categories.length;
+        return categories[categoryIndex];
+      } else {
+        return stretchFocus;
+      }
+    } else {
+      return 'default';
+    }
+  };
+  
+  const currentCategory = getCurrentCategory();
+  
+  // Get current exercise based on exercise index - simplified logic
   const currentExercise = exercises.length > 0 
-    ? exercises[completedSessions % exercises.length] 
+    ? exercises[exerciseIndex % exercises.length] 
     : null;
+    
+
 
   // Check if this is an exercise with a GIF
   const isPushup = currentExercise?.name.toLowerCase().includes('push-up') || 
@@ -127,13 +173,14 @@ const ExerciseDisplay = ({ goal, strengthFocus, stretchFocus, completedSessions 
   // Render exercise 
   return (
     <div className="flex flex-col items-center">
-      <div className="text-center mb-2 font-medium text-slate-800">
-        {currentExercise ? currentExercise.name : "Rest"}
-      </div>
       
       <div className="w-full">
         {hasAnimation ? (
           <div className="w-full bg-white rounded-lg flex flex-col items-center justify-center relative overflow-hidden p-4">
+            <div className="text-center mb-4">
+              <div className="text-slate-700 font-medium mb-2 text-lg">{currentExercise?.name}</div>
+              <div className="w-20 h-1 bg-slate-300 mx-auto mb-4"></div>
+            </div>
             <img 
               src={`/animations/${gifName}.gif`}
               alt={currentExercise.name} 
@@ -423,6 +470,39 @@ export default function MicroFit() {
   // Add a state to track which back exercise to show
   const [backExerciseIndex, setBackExerciseIndex] = useState(0);
 
+  // Add state for exercise cycling - track current exercise index for each goal/focus
+  const [exerciseIndex, setExerciseIndex] = useState(0);
+  
+  // Reset exercise index when goal or focus changes
+  useEffect(() => {
+    setExerciseIndex(0);
+  }, [goal, strengthFocus, stretchFocus]);
+  
+  // Function to cycle to next exercise
+  const cycleToNextExercise = () => {
+    setExerciseIndex(prev => prev + 1);
+  };
+  
+  // Ref to prevent multiple rapid calls
+  const cycleInProgressRef = useRef(false);
+  
+  // Debounced function to cycle to next exercise
+  const debouncedCycleToNextExercise = () => {
+    if (cycleInProgressRef.current) {
+      return;
+    }
+    
+    cycleInProgressRef.current = true;
+    cycleToNextExercise();
+    
+    // Reset after a short delay
+    setTimeout(() => {
+      cycleInProgressRef.current = false;
+    }, 100);
+  };
+  
+
+
   // Add state for selected sound
   const [selectedSound, setSelectedSound] = useState('synth');
   
@@ -586,6 +666,12 @@ export default function MicroFit() {
             });
           }
           
+          // Cycle to next exercise when entering break mode
+          // Note: Removed this to prevent double increment
+          // if (nextIsBreak) {
+          //   cycleToNextExercise();
+          // }
+          
           // If entering a break and strengthFocus is back, increment backExerciseIndex
           if (nextIsBreak && goal === 'strength' && strengthFocus === 'back') {
             setBackExerciseIndex(prev => (prev + 1) % 6); // 6 back exercises
@@ -707,6 +793,10 @@ export default function MicroFit() {
   const switchMode = () => {
     setOnBreak(prev => {
       const nextIsBreak = !prev;
+      // Cycle to next exercise when manually switching to break mode
+      if (nextIsBreak) {
+        debouncedCycleToNextExercise();
+      }
       // If switching to break and strengthFocus is back, increment backExerciseIndex
       if (nextIsBreak && goal === 'strength' && strengthFocus === 'back') {
         setBackExerciseIndex(prevIdx => (prevIdx + 1) % 6); // 6 back exercises
@@ -816,7 +906,7 @@ export default function MicroFit() {
                   goal={goal} 
                   strengthFocus={strengthFocus} 
                   stretchFocus={stretchFocus}
-                  completedSessions={strengthFocus === 'back' ? backExerciseIndex : completedSessions}
+                  exerciseIndex={exerciseIndex}
                 />
               </div>
             )}
@@ -976,9 +1066,9 @@ export default function MicroFit() {
                           ? 'bg-slate-600 text-white border-gray-600' 
                           : 'bg-white text-black border-gray-300'}`}
                       >
-                        {['abs', 'back', 'chest', 'legs', 'shoulders'].map((focus) => (
+                        {['abs', 'back', 'chest', 'legs', 'shoulders', 'randomized'].map((focus) => (
                           <option key={focus} value={focus}>
-                            {focus.charAt(0).toUpperCase() + focus.slice(1)}
+                            {focus === 'randomized' ? 'Randomized' : focus.charAt(0).toUpperCase() + focus.slice(1)}
                           </option>
                         ))}
                       </select>
@@ -997,9 +1087,9 @@ export default function MicroFit() {
                           ? 'bg-slate-600 text-white border-gray-600' 
                           : 'bg-white text-black border-gray-300'}`}
                       >
-                        {['hips', 'legs', 'lower back', 'neck and shoulders', 'upper back'].map((focus) => (
+                        {['hips', 'legs', 'lower back', 'neck and shoulders', 'upper back', 'randomized'].map((focus) => (
                           <option key={focus} value={focus}>
-                            {focus.charAt(0).toUpperCase() + focus.slice(1)}
+                            {focus === 'randomized' ? 'Randomized' : focus.charAt(0).toUpperCase() + focus.slice(1)}
                           </option>
                         ))}
                       </select>
